@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>My OJT Progress</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: #E3E3E3; color: #0f172a; min-height: 100vh;
+    padding-bottom: 40px;
+  }
+  .app { max-width: 480px; margin: 0 auto; background: #FFFFFF; min-height: 100vh; padding-bottom: 30px; }
+
+  header {
+    background: linear-gradient(135deg, #001489, #000a4d);
+    color: #FFFFFF; padding: 20px 20px 24px; border-radius: 0 0 24px 24px;
+    position: sticky; top: 0; z-index: 10;
+    border-bottom: 3px solid #C8102E;
+  }
+  header .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  header h1 { font-size: 18px; font-weight: 700; }
+  header .sub { font-size: 12px; opacity: 0.85; }
+  .logout {
+    background: rgba(255,255,255,0.15); border: none; color: #FFFFFF;
+    padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .progress-wrap { margin-top: 16px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+  .progress-bar { height: 8px; background: rgba(255,255,255,0.25); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #FFFFFF; border-radius: 4px; transition: width .4s ease; }
+
+  .section { padding: 20px; }
+  .section-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #001489; }
+
+  .cal-card { background: #FFFFFF; border: 1.5px solid #E3E3E3; border-radius: 14px; padding: 14px; }
+  .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .cal-header .month { font-weight: 700; font-size: 14px; color: #001489; }
+  .cal-nav { background: #E3E3E3; border: none; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 14px; color: #001489; }
+  .cal-nav:hover { background: #d1d1d1; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-dow { text-align: center; font-size: 10px; font-weight: 600; color: #94a3b8; padding: 4px 0; }
+  .cal-day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; border-radius: 7px; color: #334155; position: relative; cursor: pointer;
+  }
+  .cal-day.empty { cursor: default; }
+  .cal-day.has-event { background: #e8ecf5; color: #001489; font-weight: 700; }
+  .cal-day.today { outline: 2px solid #001489; outline-offset: -2px; }
+  .cal-events { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .event-item {
+    background: #f8f9fc; border-left: 3px solid #001489; padding: 10px 12px;
+    border-radius: 8px; font-size: 12px;
+  }
+  .event-item strong { display: block; font-size: 13px; margin-bottom: 2px; color: #001489; }
+  .event-item .date { color: #64748b; font-size: 11px; margin-bottom: 4px; }
+  .event-item .desc { color: #334155; }
+
+  .step-list { display: flex; flex-direction: column; gap: 10px; }
+  .step {
+    background: #FFFFFF; border: 1.5px solid #E3E3E3; border-radius: 14px;
+    padding: 14px; display: flex; gap: 12px; align-items: flex-start;
+    transition: all .2s;
+  }
+  .step.approved { border-color: #10b981; background: #f0fdf4; }
+  .step.completed { border-color: #f59e0b; background: #fffbeb; }
+  .step.rejected { border-color: #C8102E; background: #fef2f2; }
+  .step-num {
+    flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px;
+    background: #E3E3E3; color: #001489; font-weight: 700; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step.approved .step-num { background: #10b981; color: #fff; }
+  .step.completed .step-num { background: #f59e0b; color: #fff; }
+  .step.rejected .step-num { background: #C8102E; color: #fff; }
+  .step-body { flex: 1; min-width: 0; }
+  .step-title { font-size: 13px; font-weight: 600; color: #0f172a; margin-bottom: 3px; line-height: 1.3; }
+  .step-desc { font-size: 11.5px; color: #64748b; line-height: 1.4; }
+  .badge {
+    display: inline-block; margin-top: 6px; padding: 3px 8px; border-radius: 20px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
+  }
+  .badge.pending { background: #E3E3E3; color: #64748b; }
+  .badge.completed { background: #fef3c7; color: #92400e; }
+  .badge.approved { background: #d1fae5; color: #065f46; }
+  .badge.rejected { background: #fce7ea; color: #C8102E; }
+  .step-note {
+    margin-top: 8px; padding: 8px 10px; background: #fef2f2;
+    border-radius: 6px; font-size: 11px; color: #991b1b;
+    border-left: 2px solid #C8102E;
+  }
+  .step-actions { margin-top: 10px; display: flex; gap: 8px; }
+  .btn-action {
+    flex: 1; padding: 9px; border: none; border-radius: 8px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .btn-action.primary { background: #001489; color: #FFFFFF; }
+  .btn-action.primary:hover { background: #001aad; }
+  .btn-action.primary:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+  .empty-state { text-align: center; padding: 30px 20px; color: #94a3b8; font-size: 13px; }
+  .loading { text-align: center; padding: 30px; color: #94a3b8; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="top">
+      <div>
+        <div class="sub">Welcome back,</div>
+        <h1 id="userName">Loading...</h1>
+      </div>
+      <button class="logout" onclick="logout()">Log out</button>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>OJT Progress</span>
+        <span id="progressText">0 / 12</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+  </header>
+
+  <div class="section">
+    <div class="section-title">📅 OJT Schedule</div>
+    <div class="cal-card">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+        <div class="month" id="monthLabel">—</div>
+        <button class="cal-nav" onclick="changeMonth(1)">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-events" id="calEvents"></div>
+    </div>
+  </div>
+
+  <div class="section" style="padding-top:0;">
+    <div class="section-title">📋 My OJT Steps</div>
+    <div class="step-list" id="stepList">
+      <div class="loading">Loading steps...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+const user = JSON.parse(localStorage.getItem('user') || 'null');
+if (!token || !user) location.href = '/';
+if (user && user.role === 'coordinator') location.href = '/coordinator.html';
+
+document.getElementById('userName').textContent = user?.full_name || 'Student';
+
+const STEPS = [
+  { n: 1, title: 'Google Form', desc: 'Fill out the initial OJT Google Form', self: true },
+  { n: 2, title: 'Orientation', desc: 'Attend the OJT orientation', self: false },
+  { n: 3, title: 'Evaluation', desc: 'Complete the evaluation', self: false },
+  { n: 4, title: 'Submission of Evaluation Documents to CDJP Office', desc: 'Submit eval docs to CDJP', self: false },
+  { n: 5, title: 'SIP Processing Fee Payment', desc: 'Pay the SIP processing fee', self: false },
+  { n: 6, title: 'Enrollment of Practicum Subject', desc: 'Enroll in the practicum subject', self: false },
+  { n: 7, title: 'Verification: HTE / MOA / MOU', desc: 'Verify HTE, MOA, and MOU', self: false },
+  { n: 8, title: 'SIP Documents BEFORE Internship/OJT', desc: 'Submit pre-OJT documents', self: false },
+  { n: 9, title: 'SIAR Submission DURING Internship/OJT', desc: 'Submit student internship activity report', self: false },
+  { n: 10, title: 'SIP Documents AFTER Internship/OJT', desc: 'Submit post-OJT docs (SIAR, ICOC, Evaluation)', self: false },
+  { n: 11, title: 'ICOC and Evaluation Submission', desc: 'Submit ICOC and evaluation form', self: false },
+  { n: 12, title: 'Clearance', desc: 'Complete and submit clearance', self: false },
+];
+
+function logout() { localStorage.clear(); location.href = '/'; }
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+      ...(opts.headers || {}),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { logout(); throw new Error('Session expired'); }
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+async function loadSteps() {
+  try {
+    const steps = await apiFetch('/api/student/steps');
+    const byNum = {};
+    steps.forEach(s => byNum[s.step_number] = s);
+    const approvedCount = steps.filter(s => s.status === 'approved').length;
+    document.getElementById('progressText').textContent = `${approvedCount} / 12`;
+    document.getElementById('progressFill').style.width = (approvedCount / 12 * 100) + '%';
+    const list = document.getElementById('stepList');
+    list.innerHTML = '';
+    STEPS.forEach(step => {
+      const st = byNum[step.n] || { status: 'pending' };
+      const el = document.createElement('div');
+      el.className = 'step ' + st.status;
+      el.innerHTML = `
+        <div class="step-num">${st.status === 'approved' ? '✓' : step.n}</div>
+        <div class="step-body">
+          <div class="step-title">${step.title}</div>
+          <div class="step-desc">${step.desc}</div>
+          <span class="badge ${st.status}">${labelFor(st.status)}</span>
+          ${st.status === 'rejected' && st.coordinator_note
+            ? `<div class="step-note"><strong>Note:</strong> ${escapeHtml(st.coordinator_note)}</div>` : ''}
+          ${renderActions(step, st)}
+        </div>`;
+      list.appendChild(el);
+    });
+  } catch (e) {
+    document.getElementById('stepList').innerHTML = `<div class="empty-state">Error: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function labelFor(s) {
+  return { pending: 'PENDING', completed: 'AWAITING APPROVAL', approved: 'APPROVED', rejected: 'REJECTED' }[s] || s;
+}
+
+function renderActions(step, st) {
+  if (st.status === 'approved') return '';
+  if (step.self) {
+    return `<div class="step-actions">
+      <button class="btn-action primary" onclick="completeStep(${step.n})"
+        ${st.status === 'completed' ? 'disabled' : ''}>
+        ${st.status === 'completed' ? 'Done' : 'Mark as Done'}
+      </button>
+    </div>`;
+  }
+  if (st.status === 'completed') return '';
+  return `<div class="step-actions">
+    <button class="btn-action primary" onclick="submitStep(${step.n})">
+      ${st.status === 'rejected' ? 'Resubmit for Approval' : 'Submit for Approval'}
+    </button>
+  </div>`;
+}
+
+async function completeStep(n) {
+  try { await apiFetch(`/api/student/steps/${n}/complete`, { method: 'POST' }); loadSteps(); }
+  catch (e) { alert(e.message); }
+}
+
+async function submitStep(n) {
+  if (!confirm('Submit this step for coordinator approval?')) return;
+  try { await apiFetch(`/api/student/steps/${n}/submit`, { method: 'POST' }); loadSteps(); }
+  catch (e) { alert(e.message); }
+}
+
+let allEvents = [];
+let currentDate = new Date();
+let selectedDayKey = null;
+
+async function loadEvents() {
+  try { allEvents = await apiFetch('/api/events'); renderCalendar(); }
+  catch (e) { document.getElementById('calEvents').innerHTML = `<div style="color:#94a3b8;font-size:12px;">Could not load events</div>`; }
+}
+
+function changeMonth(delta) { currentDate.setMonth(currentDate.getMonth() + delta); selectedDayKey = null; renderCalendar(); }
+
+function dateKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function renderCalendar() {
+  const y = currentDate.getFullYear(), m = currentDate.getMonth();
+  const names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('monthLabel').textContent = `${names[m]} ${y}`;
+  const firstDow = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const today = new Date();
+  const todayKey = dateKey(today);
+  const eventsByDay = {};
+  allEvents.forEach(ev => {
+    const start = new Date(ev.start_date), end = new Date(ev.end_date);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const k = dateKey(new Date(d));
+      if (!eventsByDay[k]) eventsByDay[k] = [];
+      eventsByDay[k].push(ev);
+    }
+  });
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  ['S','M','T','W','T','F','S'].forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-dow'; el.textContent = d;
+    grid.appendChild(el);
+  });
+  for (let i = 0; i < firstDow; i++) {
+    const el = document.createElement('div'); el.className = 'cal-day empty'; grid.appendChild(el);
+  }
+  for (let day = 1; day <= daysInMonth; day++) {
+    const k = `${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const el = document.createElement('div');
+    el.className = 'cal-day';
+    el.textContent = day;
+    if (eventsByDay[k]) el.classList.add('has-event');
+    if (k === todayKey) el.classList.add('today');
+    if (k === selectedDayKey) el.style.outline = '2px solid #C8102E';
+    el.onclick = () => { selectedDayKey = (selectedDayKey === k) ? null : k; renderCalendar(); };
+    grid.appendChild(el);
+  }
+  const eventsList = document.getElementById('calEvents');
+  eventsList.innerHTML = '';
+  let toShow = [];
+  if (selectedDayKey && eventsByDay[selectedDayKey]) toShow = eventsByDay[selectedDayKey];
+  else if (!selectedDayKey) {
+    toShow = allEvents.filter(ev => {
+      const s = new Date(ev.start_date), e = new Date(ev.end_date);
+      return (s.getFullYear() === y && s.getMonth() === m) || (e.getFullYear() === y && e.getMonth() === m);
+    });
+  }
+  if (toShow.length === 0) {
+    eventsList.innerHTML = `<div style="color:#94a3b8;font-size:12px;text-align:center;padding:10px 0;">
+      ${selectedDayKey ? 'No events on this day' : 'No events this month'}
+    </div>`;
+  } else {
+    toShow.forEach(ev => {
+      const div = document.createElement('div');
+      div.className = 'event-item';
+      div.innerHTML = `
+        <strong>${escapeHtml(ev.title)}</strong>
+        <div class="date">${formatRange(ev.start_date, ev.end_date)}</div>
+        ${ev.description ? `<div class="desc">${escapeHtml(ev.description)}</div>` : ''}`;
+      eventsList.appendChild(div);
+    });
+  }
+}
+
+function formatRange(s, e) {
+  const fmt = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return s === e ? fmt(s) : `${fmt(s)} – ${fmt(e)}`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+loadSteps();
+loadEvents();
+</script>
+</body>
+</html>

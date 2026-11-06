@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OJT Portal — Login</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #001489 0%, #000a4d 100%);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .box {
+    background: #FFFFFF; border-radius: 20px; padding: 32px 26px;
+    width: 100%; max-width: 400px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+    border-top: 4px solid #C8102E;
+  }
+  .logo {
+    width: 68px; height: 68px; margin: 0 auto 16px;
+    background: #001489;
+    box-shadow: 0 0 0 3px #C8102E;
+    border-radius: 18px; display: flex; align-items: center; justify-content: center;
+    color: #FFFFFF; font-weight: 800; font-size: 24px;
+  }
+  h1 { text-align: center; font-size: 22px; color: #001489; margin-bottom: 4px; }
+  .sub { text-align: center; color: #64748b; font-size: 13px; margin-bottom: 24px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: #001489; margin-bottom: 6px; }
+  input {
+    width: 100%; padding: 12px 14px; border: 1.5px solid #E3E3E3; border-radius: 10px;
+    font-size: 15px; margin-bottom: 16px; transition: border .15s; font-family: inherit;
+    color: #0f172a;
+  }
+  input:focus { outline: none; border-color: #001489; box-shadow: 0 0 0 3px rgba(0,20,137,0.1); }
+  button.primary {
+    width: 100%; padding: 13px; border: none; border-radius: 10px;
+    background: #001489; color: #FFFFFF;
+    font-size: 15px; font-weight: 600; cursor: pointer; transition: all .15s;
+  }
+  button.primary:hover { background: #001aad; }
+  button.primary:active { transform: scale(0.98); }
+  button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  .error { color: #C8102E; font-size: 13px; margin-top: 12px; text-align: center; min-height: 16px; font-weight: 500; }
+  .switch { text-align: center; margin-top: 20px; font-size: 13px; color: #64748b; }
+  .switch a { color: #001489; font-weight: 600; text-decoration: none; cursor: pointer; }
+  .switch a:hover { color: #C8102E; }
+  .register-only { display: none; }
+  body.register-mode .register-only { display: block; }
+  body.register-mode .login-only { display: none; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo">OJT</div>
+    <h1 id="pageTitle">OJT Portal</h1>
+    <p class="sub">On-the-Job Training Management</p>
+
+    <form id="authForm">
+      <label>Student Number</label>
+      <input type="text" id="studentNumber" placeholder="e.g. 2021-00001" required autocomplete="username">
+
+      <div class="register-only">
+        <label>Full Name</label>
+        <input type="text" id="fullName" placeholder="Juan Dela Cruz">
+        <label>Campus</label>
+        <input type="text" id="campus" placeholder="e.g. Main Campus">
+      </div>
+
+      <label>Password</label>
+      <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+
+      <button type="submit" class="primary" id="submitBtn">Log In</button>
+      <div class="error" id="errorMsg"></div>
+    </form>
+
+    <div class="switch login-only">
+      New student? <a id="toRegister">Create an account</a>
+    </div>
+    <div class="switch register-only">
+      Already have an account? <a id="toLogin">Log in</a>
+    </div>
+  </div>
+
+<script>
+let mode = 'login';
+
+const existingToken = localStorage.getItem('token');
+const existingUser = JSON.parse(localStorage.getItem('user') || 'null');
+if (existingToken && existingUser) {
+  location.href = existingUser.role === 'coordinator' ? '/coordinator.html' : '/student.html';
+}
+
+document.getElementById('toRegister').onclick = () => setMode('register');
+document.getElementById('toLogin').onclick = () => setMode('login');
+
+function setMode(m) {
+  mode = m;
+  document.body.classList.toggle('register-mode', m === 'register');
+  document.getElementById('pageTitle').textContent = m === 'register' ? 'Create Student Account' : 'OJT Portal';
+  document.getElementById('submitBtn').textContent = m === 'register' ? 'Register' : 'Log In';
+  document.getElementById('errorMsg').textContent = '';
+  document.getElementById('fullName').required = m === 'register';
+}
+
+document.getElementById('authForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const err = document.getElementById('errorMsg');
+  err.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Please wait...';
+
+  const body = {
+    student_number: document.getElementById('studentNumber').value.trim(),
+    password: document.getElementById('password').value,
+  };
+  if (mode === 'register') {
+    body.full_name = document.getElementById('fullName').value.trim();
+    body.campus = document.getElementById('campus').value.trim();
+  }
+
+  try {
+    const url = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    location.href = data.user.role === 'coordinator' ? '/coordinator.html' : '/student.html';
+  } catch (ex) {
+    err.textContent = ex.message;
+    btn.disabled = false;
+    btn.textContent = mode === 'register' ? 'Register' : 'Log In';
+  }
+};
+</script>
+</body>
+</html>

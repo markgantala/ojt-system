@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coordinator Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: #E3E3E3; color: #0f172a; min-height: 100vh;
+  }
+  .layout { display: grid; grid-template-columns: 300px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    background: #001489; color: #e2e8f0; display: flex; flex-direction: column;
+    height: 100vh; position: sticky; top: 0;
+  }
+  .sb-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+  .sb-header h2 { font-size: 16px; font-weight: 700; color: #FFFFFF; }
+  .sb-header p { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 3px; }
+  .sb-tabs { display: flex; gap: 4px; padding: 12px 12px 0; }
+  .sb-tab {
+    flex: 1; padding: 8px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.85);
+    border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .sb-tab.active { background: #C8102E; color: #FFFFFF; }
+  .sb-list { flex: 1; overflow-y: auto; padding: 12px; }
+  .student-item {
+    padding: 10px 12px; border-radius: 8px; margin-bottom: 4px; cursor: pointer;
+    transition: background .15s; border-left: 3px solid transparent;
+  }
+  .student-item:hover { background: rgba(255,255,255,0.08); }
+  .student-item.active { background: rgba(255,255,255,0.15); border-left-color: #C8102E; }
+  .student-item .name { font-size: 13px; font-weight: 600; color: #FFFFFF; }
+  .student-item .meta { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 2px; }
+  .student-item.active .meta { color: rgba(255,255,255,0.85); }
+  .student-item .progress-mini { margin-top: 6px; height: 3px; background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden; }
+  .student-item .progress-mini-fill { height: 100%; background: #FFFFFF; }
+  .sb-logout {
+    padding: 14px; background: rgba(0,0,0,0.25); border: none; color: #FFFFFF;
+    font-size: 13px; font-weight: 600; cursor: pointer; border-top: 1px solid rgba(255,255,255,0.15);
+  }
+  .sb-logout:hover { background: #C8102E; }
+
+  /* Main */
+  .main { padding: 24px 32px; overflow-y: auto; }
+  .empty-main {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 60vh; color: #94a3b8; text-align: center;
+  }
+  .empty-main h2 { font-size: 20px; margin-bottom: 8px; color: #001489; }
+
+  .main-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .main-header h1 { font-size: 22px; font-weight: 700; color: #001489; }
+  .main-header .meta { font-size: 13px; color: #64748b; margin-top: 3px; }
+  .badge-big {
+    display: inline-block; padding: 6px 12px; border-radius: 20px;
+    background: #001489; color: #FFFFFF; font-size: 12px; font-weight: 700;
+  }
+
+  .step-table { background: #FFFFFF; border-radius: 14px; overflow: hidden; border: 1.5px solid #E3E3E3; }
+  .step-row {
+    display: grid; grid-template-columns: 50px 1fr 130px 200px;
+    align-items: center; padding: 12px 16px; border-bottom: 1px solid #E3E3E3;
+    gap: 8px;
+  }
+  .step-row:last-child { border-bottom: none; }
+  .step-row.approved { background: #f0fdf4; }
+  .step-row.completed { background: #fffbeb; }
+  .step-row.rejected { background: #fef2f2; }
+
+  .row-num {
+    width: 30px; height: 30px; border-radius: 8px; background: #E3E3E3;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px; color: #001489;
+  }
+  .step-row.approved .row-num { background: #10b981; color: #fff; }
+  .step-row.completed .row-num { background: #f59e0b; color: #fff; }
+  .step-row.rejected .row-num { background: #C8102E; color: #fff; }
+
+  .row-title { font-size: 13px; font-weight: 600; }
+  .row-desc { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+  .row-status { text-align: center; }
+  .badge {
+    padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 700;
+    display: inline-block;
+  }
+  .badge.pending { background: #E3E3E3; color: #64748b; }
+  .badge.completed { background: #fef3c7; color: #92400e; }
+  .badge.approved { background: #d1fae5; color: #065f46; }
+  .badge.rejected { background: #fce7ea; color: #C8102E; }
+
+  .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .btn-mini {
+    padding: 6px 10px; border: none; border-radius: 6px; font-size: 11px;
+    font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .btn-approve { background: #10b981; color: #fff; }
+  .btn-reject { background: #C8102E; color: #fff; }
+  .btn-reset { background: #E3E3E3; color: #001489; }
+  .btn-mini:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .note-inline { font-size: 11px; color: #C8102E; margin-top: 4px; font-style: italic; }
+
+  /* Calendar tab */
+  .cal-section { display: flex; gap: 24px; flex-wrap: wrap; }
+  .cal-block { flex: 1; min-width: 320px; }
+  .cal-card { background: #FFFFFF; border: 1.5px solid #E3E3E3; border-radius: 14px; padding: 16px; }
+  .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .cal-header .month { font-weight: 700; font-size: 15px; color: #001489; }
+  .cal-nav { background: #E3E3E3; border: none; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #001489; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-dow { text-align: center; font-size: 11px; font-weight: 600; color: #94a3b8; padding: 4px 0; }
+  .cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 13px; border-radius: 6px; }
+  .cal-day.has-event { background: #e8ecf5; color: #001489; font-weight: 700; }
+
+  .form-card { background: #FFFFFF; border: 1.5px solid #E3E3E3; border-radius: 14px; padding: 20px; }
+  .form-card h3 { font-size: 15px; margin-bottom: 14px; font-weight: 700; color: #001489; }
+  .form-card label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; color: #001489; }
+  .form-card input, .form-card textarea {
+    width: 100%; padding: 9px 11px; border: 1.5px solid #E3E3E3; border-radius: 8px;
+    margin-bottom: 12px; font-family: inherit; font-size: 13px;
+  }
+  .form-card input:focus, .form-card textarea:focus { outline: none; border-color: #001489; box-shadow: 0 0 0 3px rgba(0,20,137,0.1); }
+  .form-card .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-primary {
+    padding: 10px 16px; background: #001489; color: #FFFFFF; border: none;
+    border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn-primary:hover { background: #001aad; }
+
+  .event-list { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+  .event-card {
+    padding: 12px 14px; background: #f8f9fc; border-left: 3px solid #001489;
+    border-radius: 8px; display: flex; justify-content: space-between; align-items: start; gap: 10px;
+  }
+  .event-card .title { font-size: 13px; font-weight: 600; color: #001489; }
+  .event-card .dates { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+  .event-card .desc { font-size: 11.5px; color: #334155; margin-top: 4px; }
+  .btn-delete {
+    background: #fce7ea; color: #C8102E; border: none; padding: 5px 10px;
+    border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;
+  }
+  .btn-delete:hover { background: #C8102E; color: #fff; }
+
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: #001489; color: #fff;
+    padding: 12px 20px; border-radius: 10px; font-size: 13px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25); z-index: 999;
+    border-left: 4px solid #C8102E;
+    animation: slideIn .3s ease;
+  }
+  @keyframes slideIn { from { transform: translateX(200%); } to { transform: translateX(0); } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sb-header">
+      <h2>🎓 OJT Portal</h2>
+      <p id="coordName">Coordinator</p>
+    </div>
+    <div class="sb-tabs">
+      <button class="sb-tab active" data-tab="students" onclick="switchTab('students')">Students</button>
+      <button class="sb-tab" data-tab="calendar" onclick="switchTab('calendar')">Calendar</button>
+    </div>
+    <div class="sb-list" id="studentList"></div>
+    <button class="sb-logout" onclick="logout()">Log Out</button>
+  </aside>
+
+  <main class="main" id="mainArea">
+    <div class="empty-main">
+      <h2>Select a student</h2>
+      <p>Choose a student from the left to view and manage their OJT steps</p>
+    </div>
+  </main>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+const user = JSON.parse(localStorage.getItem('user') || 'null');
+if (!token || !user) location.href = '/';
+if (user && user.role !== 'coordinator') location.href = '/student.html';
+document.getElementById('coordName').textContent = user?.full_name || 'Coordinator';
+
+const STEPS = [
+  { n: 1, title: 'Google Form', desc: 'Initial OJT form', self: true },
+  { n: 2, title: 'Orientation', desc: 'Attend OJT orientation', self: false },
+  { n: 3, title: 'Evaluation', desc: 'Complete evaluation', self: false },
+  { n: 4, title: 'Submission of Evaluation Documents to CDJP Office', desc: 'Submit to CDJP', self: false },
+  { n: 5, title: 'SIP Processing Fee Payment', desc: 'Pay SIP fee', self: false },
+  { n: 6, title: 'Enrollment of Practicum Subject', desc: 'Enroll practicum', self: false },
+  { n: 7, title: 'Verification: HTE / MOA / MOU', desc: 'Verify HTE, MOA, MOU', self: false },
+  { n: 8, title: 'SIP Documents BEFORE Internship/OJT', desc: 'Pre-OJT docs', self: false },
+  { n: 9, title: 'SIAR Submission DURING Internship/OJT', desc: 'During OJT report', self: false },
+  { n: 10, title: 'SIP Documents AFTER Internship/OJT', desc: 'Post-OJT docs', self: false },
+  { n: 11, title: 'ICOC and Evaluation Submission', desc: 'Submit ICOC + eval', self: false },
+  { n: 12, title: 'Clearance', desc: 'Submit clearance', self: false },
+];
+
+let tab = 'students';
+let students = [];
+let allSteps = [];
+let selectedStudentId = null;
+let events = [];
+let calDate = new Date();
+
+function logout() { localStorage.clear(); location.href = '/'; }
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+      ...(opts.headers || {}),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { logout(); throw new Error('Session expired'); }
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+function switchTab(t) {
+  tab = t;
+  document.querySelectorAll('.sb-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  document.getElementById('studentList').style.display = t === 'students' ? 'block' : 'none';
+  renderMain();
+}
+
+async function loadAll() {
+  try {
+    [students, allSteps, events] = await Promise.all([
+      apiFetch('/api/coordinator/students'),
+      apiFetch('/api/coordinator/all-steps'),
+      apiFetch('/api/events'),
+    ]);
+    renderStudentList();
+    renderMain();
+  } catch (e) {
+    document.getElementById('mainArea').innerHTML = `<div class="empty-main"><h2>Error</h2><p>${escapeHtml(e.message)}</p></div>`;
+  }
+}
+
+function countApproved(id) {
+  return allSteps.filter(s => s.student_id === id && s.status === 'approved').length;
+}
+
+function renderStudentList() {
+  const list = document.getElementById('studentList');
+  list.innerHTML = '';
+  if (students.length === 0) {
+    list.innerHTML = `<div style="padding:20px;color:rgba(255,255,255,0.65);font-size:12px;text-align:center;">No students registered yet</div>`;
+    return;
+  }
+  students.forEach(s => {
+    const done = countApproved(s.id);
+    const el = document.createElement('div');
+    el.className = 'student-item' + (s.id === selectedStudentId ? ' active' : '');
+    el.innerHTML = `
+      <div class="name">${escapeHtml(s.full_name)}</div>
+      <div class="meta">${escapeHtml(s.student_number)}${s.campus ? ' · ' + escapeHtml(s.campus) : ''}</div>
+      <div class="progress-mini"><div class="progress-mini-fill" style="width:${done/12*100}%"></div></div>`;
+    el.onclick = () => { selectedStudentId = s.id; renderStudentList(); renderMain(); };
+    list.appendChild(el);
+  });
+}
+
+function renderMain() {
+  const main = document.getElementById('mainArea');
+  if (tab === 'calendar') { renderCalendarTab(main); return; }
+  if (!selectedStudentId) {
+    main.innerHTML = `<div class="empty-main">
+      <h2>Select a student</h2>
+      <p>Choose a student from the left to view and manage their OJT steps</p>
+    </div>`;
+    return;
+  }
+  const s = students.find(x => x.id === selectedStudentId);
+  const steps = allSteps.filter(x => x.student_id === selectedStudentId);
+  const byNum = {};
+  steps.forEach(x => byNum[x.step_number] = x);
+  const done = steps.filter(x => x.status === 'approved').length;
+  main.innerHTML = `
+    <div class="main-header">
+      <div>
+        <h1>${escapeHtml(s.full_name)}</h1>
+        <div class="meta">${escapeHtml(s.student_number)} · ${escapeHtml(s.campus || 'No campus')}</div>
+      </div>
+      <div class="badge-big">${done} / 12 Approved</div>
+    </div>
+    <div class="step-table" id="stepTable"></div>`;
+  const table = document.getElementById('stepTable');
+  STEPS.forEach(step => {
+    const st = byNum[step.n] || { status: 'pending' };
+    const row = document.createElement('div');
+    row.className = 'step-row ' + st.status;
+    row.innerHTML = `
+      <div class="row-num">${st.status === 'approved' ? '✓' : step.n}</div>
+      <div>
+        <div class="row-title">${step.title}</div>
+        <div class="row-desc">${step.desc}</div>
+        ${st.coordinator_note ? `<div class="note-inline">Note: ${escapeHtml(st.coordinator_note)}</div>` : ''}
+      </div>
+      <div class="row-status"><span class="badge ${st.status}">${labelFor(st.status)}</span></div>
+      <div class="row-actions">${renderActions(step, st)}</div>`;
+    table.appendChild(row);
+  });
+}
+
+function labelFor(s) {
+  return { pending: 'PENDING', completed: 'AWAITING', approved: 'APPROVED', rejected: 'REJECTED' }[s] || s;
+}
+
+function renderActions(step, st) {
+  if (step.self) {
+    if (st.status === 'approved') return `<button class="btn-mini btn-reset" onclick="resetStep(${step.n})">Reset</button>`;
+    return '';
+  }
+  if (st.status === 'completed') {
+    return `
+      <button class="btn-mini btn-approve" onclick="approveStep(${step.n})">Approve</button>
+      <button class="btn-mini btn-reject" onclick="rejectStep(${step.n})">Reject</button>`;
+  }
+  if (st.status === 'approved' || st.status === 'rejected') {
+    return `<button class="btn-mini btn-reset" onclick="resetStep(${step.n})">Reset</button>`;
+  }
+  return '';
+}
+
+async function approveStep(n) {
+  try {
+    await apiFetch(`/api/coordinator/steps/${selectedStudentId}/${n}/approve`, { method: 'POST', body: JSON.stringify({}) });
+    toast(`Step ${n} approved ✓`);
+    await loadAll();
+  } catch (e) { toast(e.message); }
+}
+
+async function rejectStep(n) {
+  const note = prompt('Reason for rejection (shown to student):');
+  if (note === null) return;
+  try {
+    await apiFetch(`/api/coordinator/steps/${selectedStudentId}/${n}/reject`, { method: 'POST', body: JSON.stringify({ note }) });
+    toast(`Step ${n} rejected`);
+    await loadAll();
+  } catch (e) { toast(e.message); }
+}
+
+async function resetStep(n) {
+  if (!confirm('Reset this step to pending?')) return;
+  try {
+    await apiFetch(`/api/coordinator/steps/${selectedStudentId}/${n}/reset`, { method: 'POST', body: JSON.stringify({}) });
+    toast(`Step ${n} reset`);
+    await loadAll();
+  } catch (e) { toast(e.message); }
+}
+
+function renderCalendarTab(main) {
+  main.innerHTML = `
+    <div class="main-header">
+      <div><h1>📅 OJT Calendar</h1><div class="meta">Manage schedules visible to all students</div></div>
+    </div>
+    <div class="cal-section">
+      <div class="cal-block">
+        <div class="cal-card">
+          <div class="cal-header">
+            <button class="cal-nav" onclick="calChange(-1)">‹</button>
+            <div class="month" id="calMonthLabel">—</div>
+            <button class="cal-nav" onclick="calChange(1)">›</button>
+          </div>
+          <div class="cal-grid" id="coordCalGrid"></div>
+        </div>
+      </div>
+      <div class="cal-block">
+        <div class="form-card">
+          <h3>➕ Add Event</h3>
+          <label>Title</label>
+          <input type="text" id="evTitle" placeholder="e.g. OJT Orientation">
+          <label>Description (optional)</label>
+          <textarea id="evDesc" rows="2" placeholder="Details about this event"></textarea>
+          <div class="row2">
+            <div><label>Start Date</label><input type="date" id="evStart"></div>
+            <div><label>End Date</label><input type="date" id="evEnd"></div>
+          </div>
+          <button class="btn-primary" onclick="addEvent()">Add Event</button>
+        </div>
+        <div class="event-list" id="eventList"></div>
+      </div>
+    </div>`;
+  renderCoordCalendar();
+  renderEventList();
+}
+
+function calChange(delta) { calDate.setMonth(calDate.getMonth() + delta); renderCoordCalendar(); }
+
+function renderCoordCalendar() {
+  const y = calDate.getFullYear(), m = calDate.getMonth();
+  const names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const label = document.getElementById('calMonthLabel');
+  if (label) label.textContent = `${names[m]} ${y}`;
+  const grid = document.getElementById('coordCalGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  ['S','M','T','W','T','F','S'].forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-dow'; el.textContent = d;
+    grid.appendChild(el);
+  });
+  const firstDow = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  for (let i = 0; i < firstDow; i++) {
+    const el = document.createElement('div'); el.className = 'cal-day'; grid.appendChild(el);
+  }
+  const eventDays = new Set();
+  events.forEach(ev => {
+    const s = new Date(ev.start_date), e = new Date(ev.end_date);
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      if (d.getFullYear() === y && d.getMonth() === m) eventDays.add(d.getDate());
+    }
+  });
+  for (let day = 1; day <= daysInMonth; day++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day' + (eventDays.has(day) ? ' has-event' : '');
+    el.textContent = day;
+    grid.appendChild(el);
+  }
+}
+
+function renderEventList() {
+  const list = document.getElementById('eventList');
+  if (!list) return;
+  if (events.length === 0) {
+    list.innerHTML = `<div style="color:#94a3b8;font-size:12px;text-align:center;padding:10px;">No events yet</div>`;
+    return;
+  }
+  list.innerHTML = '';
+  [...events].sort((a,b) => a.start_date.localeCompare(b.start_date)).forEach(ev => {
+    const card = document.createElement('div');
+    card.className = 'event-card';
+    card.innerHTML = `
+      <div>
+        <div class="title">${escapeHtml(ev.title)}</div>
+        <div class="dates">${ev.start_date} → ${ev.end_date}</div>
+        ${ev.description ? `<div class="desc">${escapeHtml(ev.description)}</div>` : ''}
+      </div>
+      <button class="btn-delete" onclick="deleteEvent(${ev.id})">Delete</button>`;
+    list.appendChild(card);
+  });
+}
+
+async function addEvent() {
+  const title = document.getElementById('evTitle').value.trim();
+  const description = document.getElementById('evDesc').value.trim();
+  const start_date = document.getElementById('evStart').value;
+  const end_date = document.getElementById('evEnd').value;
+  if (!title || !start_date || !end_date) { toast('Fill all required fields'); return; }
+  if (new Date(end_date) < new Date(start_date)) { toast('End date before start date'); return; }
+  try {
+    await apiFetch('/api/coordinator/events', { method: 'POST', body: JSON.stringify({ title, description, start_date, end_date }) });
+    toast('Event added ✓');
+    events = await apiFetch('/api/events');
+    renderCalendarTab(document.getElementById('mainArea'));
+  } catch (e) { toast(e.message); }
+}
+
+async function deleteEvent(id) {
+  if (!confirm('Delete this event?')) return;
+  try {
+    await apiFetch(`/api/coordinator/events/${id}`, { method: 'DELETE' });
+    events = await apiFetch('/api/events');
+    renderCalendarTab(document.getElementById('mainArea'));
+    toast('Event deleted');
+  } catch (e) { toast(e.message); }
+}
+
+loadAll();
+</script>
+</body>
+</html>
